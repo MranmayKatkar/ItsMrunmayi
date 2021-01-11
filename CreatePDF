@@ -1,0 +1,38 @@
+  func createPDFFrom(images arrImages:Array<UIImage>,completionHandler:(_ filePath :String,_ imageData :Data)->Void,failureHandler:(_ failure : String)->Void) {
+        AppUtils.sharedAppUtils.showActivityIndicator(from: self.view)
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).last
+        let path = dir?.appendingPathComponent("file.pdf")
+        
+        var calculatedSize : CGSize = CGSize.init()
+        for image in arrImages {
+            calculatedSize = CGSize(width: 600.0, height: calculatedSize.height+image.size.height)
+        }
+        print("Calculated size = \(calculatedSize)")
+        UIGraphicsBeginImageContextWithOptions(calculatedSize, false, 0.0)
+        var yPosition : CGFloat = 0.0
+        for image in arrImages{
+            image.draw(in: CGRect(x:0, y:yPosition, width:calculatedSize.width, height: (image.size.height)))
+            yPosition = yPosition + image.size.height
+        }
+        let pdfData = NSMutableData()
+        UIGraphicsBeginPDFContextToData(pdfData, CGRect.zero, nil)
+        for image in arrImages {
+            let imgView = UIImageView.init(image: image)
+            UIGraphicsBeginPDFPageWithInfo(imgView.bounds, nil)
+            let context = UIGraphicsGetCurrentContext()
+            imgView.layer.render(in: context!)
+        }
+        UIGraphicsEndPDFContext()
+        do {
+            try pdfData.write(to: path!, options: NSData.WritingOptions.atomic)
+//            FileManager.default.createFile(atPath: path!.absoluteString, contents: pdfData as Data, attributes: nil)
+        } catch {
+            print("error catched")
+        }
+
+        AppUtils.sharedAppUtils.stopActivityIndicator()
+        print(pdfData.length)
+        completionHandler((path?.absoluteString)!  ,pdfData as Data)
+        
+        
+    }
