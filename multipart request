@@ -1,0 +1,55 @@
+ func callPostBSIEnrollment(methodName: String, parameters: [String: String]?, file: Data?,fromView: UIView, successHandler: @escaping (String)-> Void, failureHandler: @escaping (String)-> Void){
+            if (Alamofire.NetworkReachabilityManager()?.isReachable)!{
+                AppUtils.sharedAppUtils.showActivityIndicator(from: fromView)
+               
+                Alamofire.upload(multipartFormData: { multipart in
+                    if file != nil{
+                        multipart.append(file!, withName: "File",fileName: "_.pdf", mimeType: "*.*")
+                    }
+                    for (key, value) in parameters! {
+                        multipart.append(value.data(using: String.Encoding.utf8)!, withName: key)
+                    }
+                    
+                }, to: Constants.baseUrl+methodName) { encodingResult in
+                    
+                    switch encodingResult {
+                    case .success(let upload, _, _):
+                        print("success")
+                        upload.uploadProgress(closure: { (progress) in
+                            print("Upload Progress: \(progress.fractionCompleted)")
+                        })
+                        upload.responseJSON { response in
+                            DispatchQueue.main.async {
+                                AppUtils.sharedAppUtils.stopActivityIndicator()
+                            }
+                            //print response.result
+                            print(response.result)
+                            if response.result.value != nil{
+                                do{
+                                    let resultModal = try JSONDecoder().decode(UniversalResultModel.self, from: response.data!)
+                                    
+                                    successHandler(resultModal.response.data[0].message)
+                                }catch let error{
+                                    failureHandler(error.localizedDescription)
+                                }
+                                
+                            }else{
+                                failureHandler(response.result.error.debugDescription)
+                            }
+                        }
+                    case .failure(let error):
+                        DispatchQueue.main.async {
+                            AppUtils.sharedAppUtils.stopActivityIndicator()
+                        }
+                        failureHandler(error.localizedDescription)
+                        //print encodingError.description
+                    }
+                    
+                }
+                
+            }else{
+                failureHandler(Constants.NETWORK_ERROR)
+                
+            }
+            
+        }
